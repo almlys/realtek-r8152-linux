@@ -999,10 +999,7 @@ struct r8152 {
 		int (*up)(struct r8152 *tp);
 		int (*down)(struct r8152 *tp);
 		void (*unload)(struct r8152 *tp);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-		int (*eee_get)(struct r8152 *tp, struct ethtool_keee *eee);
-		int (*eee_set)(struct r8152 *tp, struct ethtool_keee *eee);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
 		int (*eee_get)(struct r8152 *tp, struct ethtool_eee *eee);
 		int (*eee_set)(struct r8152 *tp, struct ethtool_eee *eee);
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0) */
@@ -22783,8 +22780,8 @@ static void rtl8152_get_drvinfo(struct net_device *netdev,
 	struct r8152 *tp = netdev_priv(netdev);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0)
-	strncpy(info->driver, MODULENAME, sizeof(info->driver));
-	strncpy(info->version, DRIVER_VERSION, sizeof(info->version));
+	strlcpy(info->driver, MODULENAME, sizeof(info->driver));
+	strlcpy(info->version, DRIVER_VERSION, sizeof(info->version));
 #else
 	strscpy(info->driver, MODULENAME, sizeof(info->driver));
 	strscpy(info->version, DRIVER_VERSION, sizeof(info->version));
@@ -23344,11 +23341,7 @@ static void rtl8152_get_strings(struct net_device *dev, u32 stringset, u8 *data)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-static int r8152_get_eee(struct r8152 *tp, struct ethtool_keee *eee)
-#else
 static int r8152_get_eee(struct r8152 *tp, struct ethtool_eee *eee)
-#endif
 {
 	u32 lp, adv, supported = 0;
 	int ret;
@@ -23374,33 +23367,17 @@ static int r8152_get_eee(struct r8152 *tp, struct ethtool_eee *eee)
 
 	eee->eee_enabled = tp->eee_en;
 	eee->eee_active = !!(supported & adv & lp);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-	ethtool_convert_legacy_u32_to_link_mode(eee->supported, supported);
-	ethtool_convert_legacy_u32_to_link_mode(eee->advertised, tp->eee_adv);
-	ethtool_convert_legacy_u32_to_link_mode(eee->lp_advertised, lp);
-#else
 	eee->supported = supported;
 	eee->advertised = mmd_eee_adv_to_ethtool_adv_t(tp->eee_adv);
 	eee->lp_advertised = lp;
-#endif
 
 out:
 	return (ret < 0) ? ret : 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-static int r8152_set_eee(struct r8152 *tp, struct ethtool_keee *eee)
-#else
 static int r8152_set_eee(struct r8152 *tp, struct ethtool_eee *eee)
-#endif
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-	u32 advertised = 0;
-	ethtool_convert_link_mode_to_legacy_u32(&advertised, eee->advertised);
-	u16 val = ethtool_adv_to_mmd_eee_adv_t(advertised);
-#else
 	u16 val = ethtool_adv_to_mmd_eee_adv_t(eee->advertised);
-#endif
 
 	tp->eee_en = eee->eee_enabled;
 	tp->eee_adv = val;
@@ -23408,11 +23385,7 @@ static int r8152_set_eee(struct r8152 *tp, struct ethtool_eee *eee)
 	return rtl_eee_enable(tp, tp->eee_en);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-static int r8153_get_eee(struct r8152 *tp, struct ethtool_keee *eee)
-#else
 static int r8153_get_eee(struct r8152 *tp, struct ethtool_eee *eee)
-#endif
 {
 	u32 lp, adv, supported = 0;
 	u16 val;
@@ -23435,26 +23408,16 @@ static int r8153_get_eee(struct r8152 *tp, struct ethtool_eee *eee)
 
 	eee->eee_enabled = tp->eee_en;
 	eee->eee_active = !!(supported & adv & lp);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-	ethtool_convert_legacy_u32_to_link_mode(eee->supported, supported);
-	ethtool_convert_legacy_u32_to_link_mode(eee->advertised, tp->eee_adv);
-	ethtool_convert_legacy_u32_to_link_mode(eee->lp_advertised, lp);
-#else
 	eee->supported = supported;
 	eee->advertised = mmd_eee_adv_to_ethtool_adv_t(tp->eee_adv);
 	eee->lp_advertised = lp;
-#endif
 
 out:
 	return (ret < 0) ? ret : 0;
 }
 
 static int
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-rtl_ethtool_get_eee(struct net_device *net, struct ethtool_keee *edata)
-#else
 rtl_ethtool_get_eee(struct net_device *net, struct ethtool_eee *edata)
-#endif
 {
 	struct r8152 *tp = netdev_priv(net);
 	int ret;
@@ -23481,11 +23444,7 @@ out:
 }
 
 static int
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
-rtl_ethtool_set_eee(struct net_device *net, struct ethtool_keee *edata)
-#else
 rtl_ethtool_set_eee(struct net_device *net, struct ethtool_eee *edata)
-#endif
 {
 	struct r8152 *tp = netdev_priv(net);
 	int ret;
@@ -24001,7 +23960,11 @@ static int rtltool_ioctl(struct r8152 *tp, struct ifreq *ifr)
 		uinfo->idVendor = __le16_to_cpu(udev->descriptor.idVendor);
 		uinfo->idProduct = __le16_to_cpu(udev->descriptor.idProduct);
 		uinfo->bcdDevice = __le16_to_cpu(udev->descriptor.bcdDevice);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,3,0)
+		strlcpy(uinfo->devpath, udev->devpath, sizeof(udev->devpath));
+#else
 		strscpy(uinfo->devpath, udev->devpath, sizeof(udev->devpath));
+#endif
 		pla_ocp_read(tp, PLA_IDR, sizeof(uinfo->dev_addr),
 			     uinfo->dev_addr);
 
